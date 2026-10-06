@@ -9,3 +9,15 @@ deployment/*/dist
 deployment/*/pkg-dist
 deployment/collect-dist/
 ci/
+**/bin/
+**/obj/
+**/node_modules/
+.idea/
+.vscode/
+.env
+.env.*
+**/rclone.conf
+**/rclone.conf.*
+AGENTS.md
+compose.yaml
+deployment/coolify/README.md

@@ -282,3 +282,9 @@ mono_crash.*.json
 # Devcontainer temp files
 .devcontainer/devcontainer-lock.json
 dotnet/
+
+# Local deployment secrets
+.env
+.env.*
+**/rclone.conf
+**/rclone.conf.*

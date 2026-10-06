@@ -1,0 +1,51 @@
+services:
+  jellyfin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Update this SHA and push the backend repository to deploy a new frontend.
+        FRONTEND_REPOSITORY: https://github.com/bohdan2704/jellyfin-web.git
+        FRONTEND_COMMIT: "cf5f4bbb128364f9df84c739836b567216e94090"
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 60s
+    expose:
+      - "8096"
+    environment:
+      TZ: ${TZ:-Europe/Kyiv}
+      # Set these in Coolify after authorizing a Google Drive remote named gdrive.
+      GDRIVE_REMOTE: ${GDRIVE_REMOTE:-gdrive:Media}
+      RCLONE_CONFIG_BASE64: ${RCLONE_CONFIG_BASE64:-}
+      RCLONE_VFS_CACHE_MAX_SIZE: ${RCLONE_VFS_CACHE_MAX_SIZE:-20G}
+      RCLONE_VFS_CACHE_MIN_FREE_SPACE: ${RCLONE_VFS_CACHE_MIN_FREE_SPACE:-5G}
+      RCLONE_VFS_CACHE_MAX_AGE: ${RCLONE_VFS_CACHE_MAX_AGE:-24h}
+    volumes:
+      - jellyfin-data:/config
+      - jellyfin-cache:/cache
+      - rclone-config:/rclone-config
+      - rclone-cache:/rclone-cache
+    # Linux FUSE access is needed to mount Google Drive inside this container.
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    healthcheck:
+      test: ["CMD-SHELL", "mountpoint -q /media && curl --fail --silent --show-error http://127.0.0.1:8096/health >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  jellyfin-data:
+  jellyfin-cache:
+  rclone-config:
+  rclone-cache:
