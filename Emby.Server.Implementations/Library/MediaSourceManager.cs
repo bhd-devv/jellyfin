@@ -318,6 +318,7 @@ namespace Emby.Server.Implementations.Library
                 foreach (var mediaSource in list)
                 {
                     mediaSource.InferTotalBitrate();
+                    RemoveEmbeddedSubtitleStreams(mediaSource);
 
                     SetKeyProperties(provider, mediaSource);
                 }
@@ -394,6 +395,11 @@ namespace Emby.Server.Implementations.Library
 
             var sources = hasMediaSources.GetMediaSources(enablePathSubstitution);
 
+            foreach (var source in sources)
+            {
+                RemoveEmbeddedSubtitleStreams(source);
+            }
+
             if (user is not null)
             {
                 sources = sources
@@ -421,6 +427,21 @@ namespace Emby.Server.Implementations.Library
             }
 
             return sources;
+        }
+
+        private static void RemoveEmbeddedSubtitleStreams(MediaSourceInfo source)
+        {
+            // Filter the advertised tracks, preserving stored probe data and original stream indices.
+            source.MediaStreams = source.MediaStreams
+                .Where(stream => stream.Type != MediaStreamType.Subtitle || stream.IsExternal)
+                .ToArray();
+
+            if (source.DefaultSubtitleStreamIndex is int index
+                && index != -1
+                && !source.MediaStreams.Any(stream => stream.Type == MediaStreamType.Subtitle && stream.Index == index))
+            {
+                source.DefaultSubtitleStreamIndex = null;
+            }
         }
 
         /// <summary>
@@ -694,6 +715,7 @@ namespace Emby.Server.Implementations.Library
             var json = JsonSerializer.SerializeToUtf8Bytes(mediaSource, _jsonOptions);
             _logger.LogInformation("Live stream opened: {@MediaSource}", mediaSource);
             var clone = JsonSerializer.Deserialize<MediaSourceInfo>(json, _jsonOptions);
+            RemoveEmbeddedSubtitleStreams(clone);
 
             if (!request.UserId.IsEmpty())
             {
@@ -975,6 +997,11 @@ namespace Emby.Server.Implementations.Library
         public async Task<MediaSourceInfo> GetLiveStream(string id, CancellationToken cancellationToken)
         {
             var result = await GetLiveStreamWithDirectStreamProvider(id, cancellationToken).ConfigureAwait(false);
+            if (result.Item1 is not null)
+            {
+                RemoveEmbeddedSubtitleStreams(result.Item1);
+            }
+
             return result.Item1;
         }
 
@@ -1000,6 +1027,7 @@ namespace Emby.Server.Implementations.Library
 
             await new LiveStreamHelper(_mediaEncoder, _logger, _appPaths)
                 .AddMediaInfoWithProbe(stream, false, false, cancellationToken).ConfigureAwait(false);
+            RemoveEmbeddedSubtitleStreams(stream);
 
             return [stream];
         }

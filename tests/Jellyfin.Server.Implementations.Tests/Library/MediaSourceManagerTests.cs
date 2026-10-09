@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using AutoFixture;
 using AutoFixture.AutoMoq;
 using Castle.Components.DictionaryAdapter;
@@ -59,6 +61,130 @@ namespace Jellyfin.Server.Implementations.Tests.Library
         [InlineData("rtsp://media.example.com:554/twister/audiotrack", MediaProtocol.Rtsp)]
         public void GetPathProtocol_ValidArg_Correct(string path, MediaProtocol expected)
             => Assert.Equal(expected, _mediaSourceManager.GetPathProtocol(path));
+
+        [Theory]
+        [InlineData("subrip")]
+        [InlineData("ass")]
+        [InlineData("ssa")]
+        [InlineData("pgssub")]
+        [InlineData("dvdsub")]
+        [InlineData("vobsub")]
+        [InlineData("webvtt")]
+        public void GetStaticMediaSources_HidesEmbeddedSubtitlesAndPreservesExternalTracks(string embeddedCodec)
+        {
+            var streams = new MediaStream[]
+            {
+                new() { Index = 0, Type = MediaStreamType.Video },
+                new() { Index = 1, Type = MediaStreamType.Audio },
+                new() { Index = 2, Type = MediaStreamType.Subtitle, Codec = embeddedCodec, SupportsExternalStream = true },
+                new() { Index = 3, Type = MediaStreamType.EmbeddedImage },
+                new() { Index = 4, Type = MediaStreamType.Subtitle, Codec = "ass", IsExternal = true, Path = "/Movies/Movie.uk.ass" },
+                new() { Index = 5, Type = MediaStreamType.Subtitle, Codec = embeddedCodec, IsForced = true, IsDefault = true },
+                new() { Index = 6, Type = MediaStreamType.Subtitle, Codec = "dvdsub", IsExternal = true, Path = "/Movies/Movie.uk.idx" }
+            };
+            var source = new MediaSourceInfo { MediaStreams = streams, DefaultAudioStreamIndex = 1, DefaultSubtitleStreamIndex = 5 };
+            var video = CreateVideoWithSources(source);
+
+            var result = Assert.Single(_mediaSourceManager.GetStaticMediaSources(video, true));
+
+            Assert.Equal(new[] { 0, 1, 3, 4, 6 }, result.MediaStreams.Select(stream => stream.Index));
+            Assert.Equal(1, result.DefaultAudioStreamIndex);
+            Assert.Null(result.DefaultSubtitleStreamIndex);
+            Assert.Equal(7, streams.Length);
+        }
+
+        [Theory]
+        [InlineData("mkv", true, 2, 4)]
+        [InlineData("mkv", false, 2, null)]
+        [InlineData("mp4", true, 2, 4)]
+        [InlineData("mkv", true, -1, -1)]
+        public void GetStaticMediaSources_DefaultSubtitleSelectionUsesOnlyExternalTracks(
+            string container,
+            bool hasExternalSubtitle,
+            int rememberedIndex,
+            int? expectedIndex)
+        {
+            _mockUserDataManager
+                .Setup(manager => manager.GetUserData(It.IsAny<User>(), It.IsAny<BaseItem>()))
+                .Returns(new UserItemData { Key = "key", SubtitleStreamIndex = rememberedIndex });
+            _user.RememberSubtitleSelections = true;
+            _user.SubtitleMode = SubtitlePlaybackMode.Always;
+            _user.SubtitleLanguagePreference = "ukr";
+            _user.AudioLanguagePreference = "eng";
+            var streams = new List<MediaStream>
+            {
+                new() { Index = 0, Type = MediaStreamType.Video },
+                new() { Index = 1, Type = MediaStreamType.Audio, Language = "eng", IsDefault = true },
+                new() { Index = 2, Type = MediaStreamType.Subtitle, Language = "ukr", IsDefault = true, IsForced = true }
+            };
+            if (hasExternalSubtitle)
+            {
+                streams.Add(new MediaStream { Index = 4, Type = MediaStreamType.Subtitle, Language = "ukr", IsExternal = true });
+            }
+
+            var video = CreateVideoWithSources(new MediaSourceInfo { Container = container, MediaStreams = streams });
+
+            var result = Assert.Single(_mediaSourceManager.GetStaticMediaSources(video, false, _user));
+
+            Assert.Equal(expectedIndex, result.DefaultSubtitleStreamIndex);
+            Assert.DoesNotContain(result.MediaStreams, stream => stream.Type == MediaStreamType.Subtitle && !stream.IsExternal);
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(4)]
+        public void GetStaticMediaSources_ValidSubtitleDefaultIsPreservedWithoutUser(int defaultIndex)
+        {
+            var source = new MediaSourceInfo
+            {
+                DefaultSubtitleStreamIndex = defaultIndex,
+                MediaStreams = new MediaStream[]
+                {
+                    new() { Index = 2, Type = MediaStreamType.Subtitle },
+                    new() { Index = 4, Type = MediaStreamType.Subtitle, IsExternal = true }
+                }
+            };
+
+            var result = Assert.Single(_mediaSourceManager.GetStaticMediaSources(CreateVideoWithSources(source), false));
+
+            Assert.Equal(defaultIndex, result.DefaultSubtitleStreamIndex);
+            Assert.Equal(4, Assert.Single(result.MediaStreams).Index);
+        }
+
+        [Fact]
+        public async Task GetPlaybackMediaSources_FiltersStaticAndDynamicSubtitleTracks()
+        {
+            var staticSource = new MediaSourceInfo
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                MediaStreams = new MediaStream[]
+                {
+                    new() { Index = 0, Type = MediaStreamType.Video },
+                    new() { Index = 2, Type = MediaStreamType.Subtitle, Codec = "ass" },
+                    new() { Index = 4, Type = MediaStreamType.Subtitle, Codec = "subrip", IsExternal = true }
+                }
+            };
+            var dynamicSource = new MediaSourceInfo
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                DefaultSubtitleStreamIndex = 2,
+                MediaStreams = staticSource.MediaStreams.ToArray()
+            };
+            var video = CreateVideoWithSources(staticSource);
+            var provider = new Mock<IMediaSourceProvider>();
+            provider.Setup(value => value.GetMediaSources(video, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new[] { dynamicSource });
+            _mediaSourceManager.AddParts(new[] { provider.Object });
+
+            var sources = await _mediaSourceManager.GetPlaybackMediaSources(video, null!, false, true, CancellationToken.None);
+
+            Assert.Equal(2, sources.Count);
+            Assert.All(sources, source =>
+            {
+                Assert.Equal(new[] { 0, 4 }, source.MediaStreams.Select(stream => stream.Index));
+                Assert.Null(source.DefaultSubtitleStreamIndex);
+            });
+        }
 
         [Theory]
         [InlineData(5, "eng", "eng", false, true)]
@@ -280,6 +406,15 @@ namespace Jellyfin.Server.Implementations.Tests.Library
 
             Assert.Equal(primary.Id.ToString("N"), sources[0].Id);
             _mockUserDataManager.Verify(x => x.GetUserDataBatch(It.IsAny<IReadOnlyList<BaseItem>>(), It.IsAny<User>()), Times.Never);
+        }
+
+        private static Video CreateVideoWithSources(params MediaSourceInfo[] sources)
+        {
+            var video = new Mock<Video> { CallBase = true };
+            video.Object.Id = Guid.NewGuid();
+            video.Object.Path = "/Movies/Movie.mkv";
+            video.Setup(value => value.GetMediaSources(It.IsAny<bool>())).Returns(sources);
+            return video.Object;
         }
 
         private void SetupUserDataBatch(Dictionary<Guid, UserItemData> userData)

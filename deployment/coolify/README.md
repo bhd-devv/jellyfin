@@ -50,11 +50,16 @@ and avoids losing the media mount when separate containers are recreated.
    ```
 
    Select **New remote**, name it `gdrive`, and select **Google Drive** (`drive`).
-   You can leave client ID and client secret blank to use rclone's built-in OAuth
-   client. Choose the **read-only** scope (`drive.readonly`), then complete browser
-   authorization with your Google account. For a Google Shared Drive, select it
-   during setup. A custom OAuth client is optional; if you create one, avoid
-   leaving its consent screen in Testing, where refresh tokens can expire in seven days.
+   Configure your own Google OAuth client following
+   [rclone's instructions](https://rclone.org/drive/#making-your-own-client-id):
+   enable the Google Drive API and create a **Desktop app** OAuth client.
+   Enter its client ID and client secret in rclone. The shared rclone OAuth
+   client is being retired during 2026, so do not rely on it for deployment.
+   Choose the **read-only** scope (`drive.readonly`), then complete browser
+   authorization with your Google account. Publish the OAuth consent app to
+   **Production** for persistent use; in Testing, refresh tokens can expire
+   after seven days. Answer **No** to Shared Drive for a personal My Drive;
+   otherwise select the Shared Drive containing your media.
 3. Verify that the chosen folder is accessible:
 
    ```sh
@@ -96,7 +101,10 @@ the secret if Google revokes access.
 2. Push this backend branch to GitHub. In Coolify create an Application from
    `bohdan2704/jellyfin`, select `bh-fork-personal`, choose the Docker Compose
    build pack, and set the Compose location to `/compose.yaml` with base directory
-   `/`. Use Coolify's normal Compose build so the Dockerfile arguments are passed.
+   `/`. Save the settings and select **Load a Compose File** (or **Reload Compose
+   File**, depending on the Coolify version). Confirm that the parsed `jellyfin`
+   service appears under Domains. Use Coolify's normal Compose build so the
+   Dockerfile arguments are passed.
 3. Add these runtime environment variables in Coolify:
 
    | Variable | Default / value | Purpose |
@@ -112,7 +120,10 @@ the secret if Google revokes access.
    quotes in Coolify. A missing config, inaccessible folder, or failed mount
    prevents Jellyfin from starting.
 4. Assign your HTTPS domain to the `jellyfin` service, targeting internal port
-   8096. The service only exposes that internal port; Coolify's proxy handles
+   8096: enter a value such as `https://jellyfin.example.com:8096` in its Domains
+   field. The suffix selects the container port; the public URL remains
+   `https://jellyfin.example.com` on standard HTTPS port 443.
+   The service only exposes that internal port; Coolify's proxy handles
    public access and TLS. No separate database, Redis, or frontend service is needed.
 5. Deploy, open the domain, and complete setup. Add libraries using paths such
    as `/media/Movies` and `/media/Shows`. In Jellyfin's Networking settings,
