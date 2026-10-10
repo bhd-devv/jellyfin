@@ -1465,6 +1465,80 @@ namespace Jellyfin.Server.Implementations.Migrations
                     b.HasAnnotation("Sqlite:UseSqlReturningClause", false);
                 });
 
+            modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.UserVocabularyEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CueIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Lemma")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MediaSourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PartOfSpeech")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sentence")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SentenceTranslation")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("StartPositionTicks")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SubtitleStreamIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Translation")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Word")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WordOffset")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "DateCreated");
+
+                    b.ToTable("UserVocabularyEntries");
+
+                    b.HasAnnotation("Sqlite:UseSqlReturningClause", false);
+                });
+
             modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.AccessSchedule", b =>
                 {
                     b.HasOne("Jellyfin.Database.Implementations.Entities.User", null)
@@ -1736,6 +1810,15 @@ namespace Jellyfin.Server.Implementations.Migrations
                     b.Navigation("Item");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.UserVocabularyEntry", b =>
+                {
+                    b.HasOne("Jellyfin.Database.Implementations.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Jellyfin.Database.Implementations.Entities.BaseItemEntity", b =>

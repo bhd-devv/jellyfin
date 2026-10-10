@@ -24,6 +24,11 @@ namespace Jellyfin.Database.Implementations;
 public class JellyfinDbContext(DbContextOptions<JellyfinDbContext> options, ILogger<JellyfinDbContext> logger, IJellyfinDatabaseProvider jellyfinDatabaseProvider, IEntityFrameworkCoreLockingBehavior entityFrameworkCoreLocking) : DbContext(options)
 {
     /// <summary>
+    /// Gets the saved words and subtitle contexts for language learning.
+    /// </summary>
+    public DbSet<UserVocabularyEntry> UserVocabularyEntries => Set<UserVocabularyEntry>();
+
+    /// <summary>
     /// Gets the <see cref="DbSet{TEntity}"/> containing the access schedules.
     /// </summary>
     public DbSet<AccessSchedule> AccessSchedules => Set<AccessSchedule>();

@@ -9,6 +9,7 @@ using System.Text;
 using Emby.Server.Implementations.EntryPoints;
 using Emby.Server.Implementations.Localization;
 using Jellyfin.Api.Middleware;
+using Jellyfin.Api.Services.LanguageLearning;
 using Jellyfin.Database.Implementations;
 using Jellyfin.LiveTv.Extensions;
 using Jellyfin.LiveTv.Recordings;
@@ -72,6 +73,10 @@ namespace Jellyfin.Server
 
             services.AddJellyfinApi(_serverApplicationHost.GetApiPluginAssemblies(), _serverConfigurationManager.GetNetworkConfiguration());
             services.AddJellyfinDbContext(_serverApplicationHost.ConfigurationManager, _configuration);
+            services.Configure<LanguageLearningOptions>(_configuration.GetSection("LanguageLearning"));
+            services.AddSingleton<OpenRouterClient>();
+            services.AddSingleton<LanguageLearningService>();
+            services.AddHttpClient(nameof(OpenRouterClient), client => client.Timeout = TimeSpan.FromSeconds(45));
             services.AddJellyfinApiSwagger();
 
             // configure custom legacy authentication
