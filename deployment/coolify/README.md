@@ -84,6 +84,9 @@ replaces it. You can remove the bootstrap secret after initial setup, provided
 the config volume is retained and securely backed up. Reauthorize and replace
 the secret if Google revokes access.
 
+For expired or revoked tokens, including the seven-day Testing limit, follow
+[Google Drive reauthorization (local or server)](google-drive-reauth.md).
+
 ## First deployment
 
 1. The deployment server must run Linux with FUSE available. On Ubuntu/Debian:
