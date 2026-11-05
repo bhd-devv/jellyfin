@@ -14,6 +14,9 @@ services:
       - "8096"
     environment:
       TZ: ${TZ:-Europe/Kyiv}
+      # OpenRouter configuration for the optional language-learning subtitle mode.
+      JELLYFIN_LanguageLearning__ApiKey: ${JELLYFIN_LanguageLearning__ApiKey:-}
+      JELLYFIN_LanguageLearning__Model: ${JELLYFIN_LanguageLearning__Model:-openai/gpt-6-luna}
       # Set these in Coolify after authorizing a Google Drive remote named gdrive.
       GDRIVE_REMOTE: ${GDRIVE_REMOTE:-gdrive:Media}
       RCLONE_CONFIG_BASE64: ${RCLONE_CONFIG_BASE64:-}

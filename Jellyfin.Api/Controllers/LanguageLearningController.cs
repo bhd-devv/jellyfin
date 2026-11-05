@@ -73,7 +73,7 @@ public sealed class LanguageLearningController(
         }
         catch (Exception exception) when (exception is HttpRequestException or InvalidDataException or JsonException || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
-            logger.LogWarning("Language learning provider failed: {ExceptionType}", exception.GetType().Name);
+            logger.LogWarning(exception, "Language learning provider failed");
             return StatusCode(StatusCodes.Status502BadGateway, "Translation is temporarily unavailable. Try again.");
         }
     }
@@ -256,7 +256,7 @@ public sealed class LanguageLearningController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable, "Configure the OpenRouter API key on the server to enable language learning.");
         }
 
-        logger.LogWarning("Vocabulary translation provider failed: {ExceptionType}", exception.GetType().Name);
+        logger.LogWarning(exception, "Vocabulary translation provider failed");
         return StatusCode(StatusCodes.Status502BadGateway, "Translation is temporarily unavailable. Try again.");
     }
 }

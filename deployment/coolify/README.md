@@ -117,6 +117,8 @@ For expired or revoked tokens, including the seven-day Testing limit, follow
    | `RCLONE_VFS_CACHE_MAX_SIZE` | `20G` | Local media cache size target |
    | `RCLONE_VFS_CACHE_MIN_FREE_SPACE` | `5G` | Free disk space target |
    | `RCLONE_VFS_CACHE_MAX_AGE` | `24h` | Maximum age of unused cached files |
+   | `JELLYFIN_LanguageLearning__ApiKey` | OpenRouter API key | Enables subtitle word and sentence translation |
+   | `JELLYFIN_LanguageLearning__Model` | `openai/gpt-6-luna` | OpenRouter model used for language learning |
    | `TZ` | `Europe/Kyiv` | Server timezone |
 
    Folder names with spaces are supported; enter the actual value without shell
