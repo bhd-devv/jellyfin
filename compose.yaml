@@ -6,7 +6,7 @@ services:
       args:
         # Update this SHA and push the backend repository to deploy a new frontend.
         FRONTEND_REPOSITORY: https://github.com/bohdan2704/jellyfin-web.git
-        FRONTEND_COMMIT: "8a1c3f6a546b3adce859bde6fdbc965d8ec1ae53"
+        FRONTEND_COMMIT: "a5dbf115891c0b64c6a94e761cb6f1d1861cb30a"
     restart: unless-stopped
     init: true
     stop_grace_period: 60s
